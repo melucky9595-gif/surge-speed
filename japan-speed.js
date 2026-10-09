@@ -5,7 +5,11 @@
 const PARENT_GROUP = "🚀 我的节点";
 const NODE_FILTER = /🇯🇵|日本|Japan|JP/i;
 const MB = 50;                       // 测速文件大小（MB），想改大小只改这里
-const TEST_URL = "https://cesu.300hero.kdns.fr/down?bytes=" + (MB * 1000000);
+// 密钥从模块参数传入（不写进公开仓库）。支持 argument=密钥 或 argument=KEY=密钥
+const RAW_ARG = typeof $argument === "string" ? $argument.trim() : "";
+const KEY = RAW_ARG.replace(/^KEY=/i, "");
+const TEST_URL = "https://cesu.300hero.kdns.fr/down?bytes=" + (MB * 1000000) +
+  "&key=" + encodeURIComponent(KEY);
 const TIMEOUT = 15;                  // 单次下载超时（秒），50MB 在慢节点上需要更久
 const MAX_SIZE = 0;                  // 0 = 不限制响应体大小（Surge 默认上限很小，会报 Response body too large）
 const GAP_MS = 1000;                 // 两个节点之间的间隔
@@ -28,7 +32,13 @@ const nodes = Array.isArray(parentNodes)
     })
   : [];
 
-if (nodes.length === 0) {
+if (!KEY) {
+  $done({
+    title: "日本节点测速",
+    content: "未收到密钥。请在模块的 script 行里加上 argument=你的密钥",
+    style: "error"
+  });
+} else if (nodes.length === 0) {
   $done({
     title: "日本节点测速",
     content:
