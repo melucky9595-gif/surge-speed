@@ -1,10 +1,18 @@
 // 日本节点下载测速（Surge 5）
 // 做法：依次把策略组「🚀 我的节点」切到每个日本节点，经该策略组下载测速文件，
-// 全部测完后自动切回原来的节点。（不能直接用节点名当 policy，Surge 会报 doesn't exist）
+// 全部测完后自动切回原来的节点。
 const PARENT_GROUP = "🚀 我的节点";
 const NODE_FILTER = /🇯🇵|日本|Japan|JP/i;
 const TEST_URL = "https://spurl.api.030101.xyz/50mb";
-const TIMEOUT = 15;
+const TIMEOUT = 10;                  // 单次下载超时（秒）
+const MAX_SIZE = 100 * 1024 * 1024;  // 放宽 Surge 对响应体大小的上限
+const GAP_MS = 2000;                 // 两个节点之间的间隔，避免被测速服务限流(429)
+const RETRY_WAIT_MS = 6000;          // 遇到 429 后等待多久再重试
+const MAX_RETRY = 2;                 // 429 最多重试次数
+
+const wait = typeof setTimeout === "function"
+  ? setTimeout
+  : function (fn) { fn(); };
 
 const details = $surge.selectGroupDetails();
 const groups = details && details.groups ? details.groups : {};
@@ -42,7 +50,7 @@ if (nodes.length === 0) {
         : "\n\n⚠️ 切回原节点失败，请手动选择：" + originalChoice;
     }
 
-    // 排序：正常测出速度的在前（速度高优先），其次是截断的（耗时短优先），失败的最后
+    // 排序：测出速度的在前（速度高优先），其次是触顶的（耗时短优先），失败的最后
     function rank(r) {
       return r.error ? 2 : (r.capped ? 1 : 0);
     }
@@ -72,7 +80,7 @@ if (nodes.length === 0) {
     $done({
       title: "🇯🇵 日本节点下载测速",
       content:
-        "测速文件：5MB　节点数：" + nodes.length +
+        "测速文件：50MB　节点数：" + nodes.length +
         "（成功 " + okCount + "）\n\n" +
         lines.join("\n") + restored,
       style: "info"
@@ -94,17 +102,27 @@ if (nodes.length === 0) {
       return;
     }
 
+    attempt(name, 0);
+  }
+
+  function attempt(name, tries) {
     const start = Date.now();
 
     $httpClient.get({
       url: TEST_URL,
       policy: PARENT_GROUP,
       timeout: TIMEOUT,
-      "max-size": 0,
+      "max-size": MAX_SIZE,
       "binary-mode": true
     }, function (error, response, data) {
       const elapsed = (Date.now() - start) / 1000;
       const bytes = data && data.byteLength ? data.byteLength : 0;
+
+      // 被测速服务限流：等一会儿再试同一个节点
+      if (response && response.status === 429 && tries < MAX_RETRY) {
+        wait(function () { attempt(name, tries + 1); }, RETRY_WAIT_MS);
+        return;
+      }
 
       if (!error && response &&
           response.status >= 200 && response.status < 300 &&
@@ -124,7 +142,7 @@ if (nodes.length === 0) {
         });
       }
 
-      next();
+      wait(next, GAP_MS);
     });
   }
 
