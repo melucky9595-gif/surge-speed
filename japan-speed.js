@@ -1,15 +1,16 @@
-这是github.// 日本节点下载测速（Surge 5）
+// 日本节点下载测速（Surge 5）
 // 做法：依次把策略组「🚀 我的节点」切到每个日本节点，经该策略组下载测速文件，
 // 全部测完后自动切回原来的节点。
+// 测速源：自建 Cloudflare Worker（/down?bytes=N），大小改 MB 即可。
 const PARENT_GROUP = "🚀 我的节点";
 const NODE_FILTER = /🇯🇵|日本|Japan|JP/i;
-const TEST_URL = "https://cesu.300hero.kdns.fr/down?bytes=" + (MB * 1000000) +
-  "&key=" + encodeURIComponent(KEY);
-const TIMEOUT = 10;                  // 单次下载超时（秒），50MB 在慢节点上需要更久
+const MB = 50;                       // 测速文件大小（MB），想改大小只改这里
+const TEST_URL = "https://cesu.300hero.kdns.fr/down?bytes=" + (MB * 1000000);
+const TIMEOUT = 60;                  // 单次下载超时（秒），50MB 在慢节点上需要更久
 const MAX_SIZE = 0;                  // 0 = 不限制响应体大小（Surge 默认上限很小，会报 Response body too large）
 const GAP_MS = 1000;                 // 两个节点之间的间隔
-const RETRY_WAIT_MS = 1000;          // 遇到 429 后等待多久再重试
-const MAX_RETRY = 1;                 // 429 最多重试次数
+const RETRY_WAIT_MS = 6000;          // 遇到 429 后等待多久再重试
+const MAX_RETRY = 2;                 // 429 最多重试次数
 
 const wait = typeof setTimeout === "function"
   ? setTimeout
@@ -81,7 +82,7 @@ if (nodes.length === 0) {
     $done({
       title: "🇯🇵 日本节点下载测速",
       content:
-        "测速文件：50MB　节点数：" + nodes.length +
+        "测速文件：" + MB + "MB（" + TEST_URL.split("/")[2] + "）　节点数：" + nodes.length +
         "（成功 " + okCount + "）\n\n" +
         lines.join("\n") + restored,
       style: "info"
@@ -119,7 +120,7 @@ if (nodes.length === 0) {
       const elapsed = (Date.now() - start) / 1000;
       const bytes = data && data.byteLength ? data.byteLength : 0;
 
-      // 被测速服务限流：等一会儿再试同一个节点
+      // 被限流：等一会儿再试同一个节点
       if (response && response.status === 429 && tries < MAX_RETRY) {
         wait(function () { attempt(name, tries + 1); }, RETRY_WAIT_MS);
         return;
@@ -133,7 +134,7 @@ if (nodes.length === 0) {
           speed: bytes / elapsed / 1048576,
           seconds: elapsed
         });
-      } else if (error && /size limit/i.test(String(error))) {
+      } else if (error && /size limit|too large/i.test(String(error))) {
         // 响应体超过 Surge 的大小上限：下载被截断，改用"到达上限的耗时"比较快慢
         results.push({ name: name, seconds: elapsed, capped: true });
       } else {
