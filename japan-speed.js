@@ -5,10 +5,10 @@ const PARENT_GROUP = "🚀 我的节点";
 const NODE_FILTER = /🇯🇵|日本|Japan|JP/i;
 const TEST_URL = "https://spurl.api.030101.xyz/50mb";
 const TIMEOUT = 10;                  // 单次下载超时（秒）
-const MAX_SIZE = 100 * 1024 * 1024;  // 放宽 Surge 对响应体大小的上限
-const GAP_MS = 2000;                 // 两个节点之间的间隔，避免被测速服务限流(429)
-const RETRY_WAIT_MS = 6000;          // 遇到 429 后等待多久再重试
-const MAX_RETRY = 2;                 // 429 最多重试次数
+const MAX_SIZE = 0;  // 放宽 Surge 对响应体大小的上限
+const GAP_MS = 1000;                 // 两个节点之间的间隔，避免被测速服务限流(429)
+const RETRY_WAIT_MS = 1000;          // 遇到 429 后等待多久再重试
+const MAX_RETRY = 1;                 // 429 最多重试次数
 
 const wait = typeof setTimeout === "function"
   ? setTimeout
