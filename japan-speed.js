@@ -42,7 +42,13 @@ if (nodes.length === 0) {
         : "\n\n⚠️ 切回原节点失败，请手动选择：" + originalChoice;
     }
 
+    // 排序：正常测出速度的在前（速度高优先），其次是截断的（耗时短优先），失败的最后
+    function rank(r) {
+      return r.error ? 2 : (r.capped ? 1 : 0);
+    }
     results.sort(function (a, b) {
+      if (rank(a) !== rank(b)) return rank(a) - rank(b);
+      if (a.capped) return a.seconds - b.seconds;
       return (b.speed || 0) - (a.speed || 0);
     });
 
@@ -53,6 +59,10 @@ if (nodes.length === 0) {
     const lines = results.map(function (r, i) {
       if (r.error) {
         return (i + 1) + ". " + r.name + "：失败（" + r.error + "）";
+      }
+      if (r.capped) {
+        return (i + 1) + ". " + r.name +
+          " — 达到大小上限，耗时 " + r.seconds.toFixed(1) + " 秒（越短越快）";
       }
       return (i + 1) + ". " + r.name +
         " — " + r.speed.toFixed(2) + " MB/s" +
@@ -90,6 +100,7 @@ if (nodes.length === 0) {
       url: TEST_URL,
       policy: PARENT_GROUP,
       timeout: TIMEOUT,
+      "max-size": 0,
       "binary-mode": true
     }, function (error, response, data) {
       const elapsed = (Date.now() - start) / 1000;
@@ -103,6 +114,9 @@ if (nodes.length === 0) {
           speed: bytes / elapsed / 1048576,
           seconds: elapsed
         });
+      } else if (error && /size limit/i.test(String(error))) {
+        // 响应体超过 Surge 的大小上限：下载被截断，改用"到达上限的耗时"比较快慢
+        results.push({ name: name, seconds: elapsed, capped: true });
       } else {
         results.push({
           name: name,
