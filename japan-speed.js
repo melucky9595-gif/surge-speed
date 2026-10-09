@@ -3,7 +3,7 @@
 // 全部测完后自动切回原来的节点。（不能直接用节点名当 policy，Surge 会报 doesn't exist）
 const PARENT_GROUP = "🚀 我的节点";
 const NODE_FILTER = /🇯🇵|日本|Japan|JP/i;
-const TEST_URL = "https://spurl.api.030101.xyz/5mb";
+const TEST_URL = "https://spurl.api.030101.xyz/50mb";
 const TIMEOUT = 15;
 
 const details = $surge.selectGroupDetails();
