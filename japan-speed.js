@@ -5,15 +5,8 @@ const TIMEOUT = 25;
 const CONCURRENCY = 3;
 
 const details = $surge.selectGroupDetails();
-
-const parentNodes = details && details.groups
-  ? details.groups["🚀 我的节点"]
-  : null;
-
-const nodes = parentNodes
-  ? parentNodes.filter(function (name) {
-      return /🇯🇵|日本|Japan|JP/i.test(name);
-    })
+const nodes = details && details.groups
+  ? details.groups[GROUP]
   : null;
 
 if (!nodes || nodes.length === 0) {
